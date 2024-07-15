@@ -2,13 +2,8 @@ package models
 
 import "gorm.io/gorm"
 
-func Setup(db *gorm.DB) {
-	db.Migrator().DropTable(
-		&User{},
-	)
-	db.AutoMigrate(
-		&User{},
-	)
+var db *gorm.DB
 
-
+func Setup() {
+	db.AutoMigrate(&User{})
 }
