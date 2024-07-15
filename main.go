@@ -31,8 +31,8 @@ func main() {
 	
 	app := fiber.New()
 	app.Use(logger.New())
-	
 
+	db.Init()
 	models.Setup(db.DB)
 	routes.Setup(app)
 
