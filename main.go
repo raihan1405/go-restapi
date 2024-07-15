@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
+	"github.com/raihan1405/go-restapi/db"
 	"github.com/raihan1405/go-restapi/models"
 	"github.com/raihan1405/go-restapi/routes"
 )
@@ -32,7 +33,7 @@ func main() {
 	app.Use(logger.New())
 	
 
-	models.Setup()
+	models.Setup(db.DB)
 	routes.Setup(app)
 
 	log.Fatal(app.Listen(getPort()))
