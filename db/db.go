@@ -13,11 +13,11 @@ var DB *gorm.DB
 func Init() *gorm.DB {
 	dsn := fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local",
-		os.Getenv("root"),
-		os.Getenv("dygXZHHXbSWhwoTmYCieafeSJIJknQqn"),
-		os.Getenv("monorail.proxy.rlwy.net"),
-		os.Getenv("44256"),
-		os.Getenv("railway"),
+		os.Getenv("MYSQLUSER"),
+		os.Getenv("MYSQLPASSWORD"),
+		os.Getenv("MYSQLHOST"),
+		os.Getenv("MYSQLPORT"),
+		os.Getenv("MYSQLDATABASE"),
 	)
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 
