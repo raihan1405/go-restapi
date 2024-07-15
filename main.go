@@ -4,11 +4,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
-	"github.com/raihan1405/go-restapi/models"
-	"github.com/gofiber/fiber/v2/middleware/logger"
-	"github.com/raihan1405/go-restapi/db"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/joho/godotenv"
+	"github.com/raihan1405/go-restapi/db"
+	"github.com/raihan1405/go-restapi/models"
+	"github.com/raihan1405/go-restapi/routes"
 )
 
 func getPort() string {
@@ -32,9 +33,9 @@ func main() {
 	app.Use(logger.New())
 	models.Setup(db)
 
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Hei")
-	})
+	
+
+	routes.Setup(app)
 
 	log.Fatal(app.Listen(getPort()))
 }
