@@ -10,11 +10,5 @@ func Setup(db *gorm.DB) {
 		&User{},
 	)
 
-	user := []User{
-		{
-			Username: "Jan",
-			Password: "Password",
-		},
-	}
-	db.Create(&user)
+
 }
