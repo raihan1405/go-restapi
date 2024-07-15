@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/raihan1405/go-restapi/models"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/raihan1405/go-restapi/db"
@@ -20,6 +21,12 @@ func getPort() string {
 }
 
 func main() {
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	
 	db := db.Init()
 	app := fiber.New()
 	app.Use(logger.New())
