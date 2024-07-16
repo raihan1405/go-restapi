@@ -51,13 +51,13 @@ func Register(c *fiber.Ctx) error {
 func Login(c *fiber.Ctx) error {
 	var data validators.LoginInput
 
-	// Parse data into the structure
+	
 	err := c.BodyParser(&data)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
 	}
 
-	// Validate input data
+	
 	err = validators.Validate.Struct(data)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})

@@ -31,7 +31,7 @@ func main() {
 	
 	app := fiber.New()
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "https://go-restapi-production.up.railway.app:8080", 
+		AllowOrigins:     "*", 
 		AllowCredentials: true,
 		AllowMethods:     "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
 		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
