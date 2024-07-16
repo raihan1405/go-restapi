@@ -100,7 +100,7 @@ func User(c *fiber.Ctx) error{
 			"message" : "unauthenticated",
 		})
 	}
-	claims := token.Claims.(jwt.StandardClaims)
+	claims := token.Claims.(*jwt.StandardClaims)
 
 	var user models.User
 	db.DB.Where("id = ?",claims.Issuer).First(&user)
