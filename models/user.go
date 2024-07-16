@@ -1,14 +1,11 @@
 package models
 
 type User struct {
+
+	ID          int    `json:"id"`
+	Email       string `json:"email" validate:"required,email"`
+	PhoneNumber string `json:"phoneNumber" validate:"required"`
+	Username    string `json:"username" validate:"required"`
+	Password    []byte `json:"password" validate:"required"`
 	
-	ID       int
-	Email string `json:"email"`
-	PhoneNumber string `json:"phoneNumber"`
-	Username string `json:"username"`
-	Password []byte `json:"password"`
 }
-
-
-
-

@@ -8,12 +8,17 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/raihan1405/go-restapi/db"
 	"github.com/raihan1405/go-restapi/models"
+	"github.com/raihan1405/go-restapi/validators"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const secretKey = "secret"
 
+
 func Register(c *fiber.Ctx) error {
+
+	var dataValidator validators.RegisterInput
+
 	var data map[string] string
 
 	err := c.BodyParser(&data)
@@ -26,20 +31,36 @@ func Register(c *fiber.Ctx) error {
 	user:= models.User{
 		Username : data["username"],
 		Email : data["email"],
+		PhoneNumber: data["phoneNumber"],
 		Password: password,
 	}
+
+	err = validators.Validate.Struct(dataValidator)
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
 
 	db.DB.Create(&user)
 	return c.JSON(user)
 }
 
 func Login(c *fiber.Ctx) error{
+
+	var dataValidator validators.LoginInput
+
 	var data map[string] string
 
 	err := c.BodyParser(&data)
 
 	if err != nil {
 		return err
+	}
+
+	err = validators.Validate.Struct(dataValidator)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	var user models.User
@@ -60,6 +81,8 @@ func Login(c *fiber.Ctx) error{
 			"message" : "incorrect password",
 		})
 	}
+
+	
 
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256,jwt.StandardClaims{
 		Issuer: strconv.Itoa(int(user.ID)),
