@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -30,8 +31,19 @@ func main() {
 	
 	
 	app := fiber.New()
+	allowedOrigins := "http://localhost:5173,https://go-restapi-production.up.railway.app:8080"
+	allowedOriginsList := strings.Split(allowedOrigins, ",")
+
+	// Set up CORS middleware with dynamic origin checking
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "*", 
+		AllowOriginsFunc: func(origin string) bool {
+			for _, allowedOrigin := range allowedOriginsList {
+				if origin == allowedOrigin {
+					return true
+				}
+			}
+			return false
+		},
 		AllowCredentials: true,
 		AllowMethods:     "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
 		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
