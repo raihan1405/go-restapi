@@ -14,134 +14,114 @@ import (
 
 const secretKey = "secret"
 
-
 func Register(c *fiber.Ctx) error {
+	var data validators.RegisterInput
 
-	var dataValidator validators.RegisterInput
-
-	var data map[string] string
-
+	// Parse data into the structure
 	err := c.BodyParser(&data)
-
 	if err != nil {
-		return err
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
 	}
 
-	password, _ := bcrypt.GenerateFromPassword([]byte(data["password"]),14)
-	user:= models.User{
-		Username : data["username"],
-		Email : data["email"],
-		PhoneNumber: data["phoneNumber"],
-		Password: password,
-	}
-
-	err = validators.Validate.Struct(dataValidator)
-
+	// Validate input data
+	err = validators.Validate.Struct(data)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	// Generate hashed password
+	password, err := bcrypt.GenerateFromPassword([]byte(data.Password), 14)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Cannot hash password"})
+	}
 
+	// Create user
+	user := models.User{
+		Username:    data.Username,
+		Email:       data.Email,
+		PhoneNumber: data.PhoneNumber,
+		Password:    password,
+	}
+
+	// Save user to database
 	db.DB.Create(&user)
 	return c.JSON(user)
 }
 
-func Login(c *fiber.Ctx) error{
+func Login(c *fiber.Ctx) error {
+	var data validators.LoginInput
 
-	var dataValidator validators.LoginInput
-
-	var data map[string] string
-
+	// Parse data into the structure
 	err := c.BodyParser(&data)
-
 	if err != nil {
-		return err
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
 	}
 
-	err = validators.Validate.Struct(dataValidator)
+	// Validate input data
+	err = validators.Validate.Struct(data)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	var user models.User
-	db.DB.Where("email = ?",data["email"]).First(&user)
+	db.DB.Where("email = ?", data.Email).First(&user)
 
 	if user.ID == 0 {
-		c.Status(fiber.StatusNotFound)
-		return c.JSON(fiber.Map{
-			"message" : "user not found",
-		})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "user not found"})
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password),[]byte(data["password"]))
-	
-	if err != nil{
-		c.Status(fiber.StatusBadRequest)
-		return c.JSON(fiber.Map{
-			"message" : "incorrect password",
-		})
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(data.Password))
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "incorrect password"})
 	}
 
-	
-
-	claims := jwt.NewWithClaims(jwt.SigningMethodHS256,jwt.StandardClaims{
-		Issuer: strconv.Itoa(int(user.ID)),
+	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
+		Issuer:    strconv.Itoa(int(user.ID)),
 		ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 	})
 
 	token, err := claims.SignedString([]byte(secretKey))
-
 	if err != nil {
-		c.Status(fiber.StatusInternalServerError)
-		return c.JSON(fiber.Map{
-			"message" : "could not login",
-		})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "could not login"})
 	}
 
 	cookie := fiber.Cookie{
-		Name : "jwt",
-		Value : token,
-		Expires : time.Now().Add(time.Hour * 24),
+		Name:     "jwt",
+		Value:    token,
+		Expires:  time.Now().Add(time.Hour * 24),
 		HTTPOnly: true,
 	}
 	c.Cookie(&cookie)
 
-	return c.JSON(fiber.Map{
-		"message" : "success",
-	})
+	return c.JSON(fiber.Map{"message": "success"})
 }
 
-func User(c *fiber.Ctx) error{
+func User(c *fiber.Ctx) error {
 	cookie := c.Cookies("jwt")
-	token,err:=jwt.ParseWithClaims(cookie,&jwt.StandardClaims{},func(token *jwt.Token)(interface{},error){
-		return []byte(secretKey),nil
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secretKey), nil
 	})
 
-	if err!= nil{
-		c.Status(fiber.StatusUnauthorized)
-		return c.JSON(fiber.Map{
-			"message" : "unauthenticated",
-		})
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "unauthenticated"})
 	}
 	claims := token.Claims.(*jwt.StandardClaims)
 
 	var user models.User
-	db.DB.Where("id = ?",claims.Issuer).First(&user)
+	db.DB.Where("id = ?", claims.Issuer).First(&user)
 
 	return c.JSON(user)
 }
 
-func Logout(c *fiber.Ctx) error{
+func Logout(c *fiber.Ctx) error {
 	cookie := fiber.Cookie{
-		Name : "jwt",
-		Value : "",
-		Expires : time.Now().Add(-time.Hour),
+		Name:     "jwt",
+		Value:    "",
+		Expires:  time.Now().Add(-time.Hour),
 		HTTPOnly: true,
 	}
 
 	c.Cookie(&cookie)
 
-	return c.JSON(fiber.Map{
-		"message" : "logout success",
-	})
+	return c.JSON(fiber.Map{"message": "logout success"})
 }
