@@ -12,7 +12,7 @@ import (
 	"github.com/raihan1405/go-restapi/db"
 	"github.com/raihan1405/go-restapi/models"
 	"github.com/raihan1405/go-restapi/routes"
-	
+	"github.com/raihan1405/go-restapi/docs"
 )
 
 func getPort() string {
