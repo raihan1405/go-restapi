@@ -14,6 +14,64 @@ import (
 
 const secretKey = "secret"
 
+// UpdatePassword godoc
+// @Summary Update user password
+// @Description Update user password with the provided old and new passwords
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param update body validators.UpdatePasswordInput true "User update password details"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/user/password [put]
+func UpdatePassword(c *fiber.Ctx) error {
+    cookie := c.Cookies("jwt")
+    token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+        return []byte(secretKey), nil
+    })
+
+    if err != nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "unauthenticated"})
+    }
+    claims := token.Claims.(*jwt.StandardClaims)
+
+    var data validators.UpdatePasswordInput
+    err = c.BodyParser(&data)
+    if err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
+    }
+
+    err = validators.Validate.Struct(data)
+    if err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
+    }
+
+    var user models.User
+    db.DB.Where("id = ?", claims.Issuer).First(&user)
+    if user.ID == 0 {
+        return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"message": "user not found"})
+    }
+
+    // Verify old password
+    err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(data.OldPassword))
+    if err != nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "incorrect old password"})
+    }
+
+    // Generate new hashed password
+    newPassword, err := bcrypt.GenerateFromPassword([]byte(data.NewPassword), 14)
+    if err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"error": "Cannot hash new password"})
+    }
+
+    user.Password = newPassword
+    db.DB.Save(&user)
+
+    return c.JSON(map[string]interface{}{"message": "password updated successfully"})
+}
+
 // UpdateUser godoc
 // @Summary Update user details
 // @Description Update user details with the provided information

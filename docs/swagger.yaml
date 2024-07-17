@@ -46,6 +46,17 @@ definitions:
     - phoneNumber
     - username
     type: object
+  validators.UpdatePasswordInput:
+    properties:
+      new_password:
+        minLength: 8
+        type: string
+      old_password:
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
   validators.UpdateUserInput:
     properties:
       email:
@@ -208,6 +219,44 @@ paths:
             additionalProperties: true
             type: object
       summary: Get the authenticated user
+      tags:
+      - user
+  /api/user/password:
+    put:
+      consumes:
+      - application/json
+      description: Update user password with the provided old and new passwords
+      parameters:
+      - description: User update password details
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/validators.UpdatePasswordInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update user password
       tags:
       - user
 swagger: "2.0"

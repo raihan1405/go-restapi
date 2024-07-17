@@ -21,3 +21,8 @@ type UpdateUserInput struct {
     Email       string `json:"email" validate:"required,email"`
     PhoneNumber string `json:"phone_number" validate:"required"`
 }
+
+type UpdatePasswordInput struct {
+    OldPassword string `json:"old_password" validate:"required"`
+    NewPassword string `json:"new_password" validate:"required,min=8"`
+}
