@@ -12,6 +12,7 @@ import (
 	"github.com/raihan1405/go-restapi/db"
 	"github.com/raihan1405/go-restapi/models"
 	"github.com/raihan1405/go-restapi/routes"
+	
 )
 
 func getPort() string {
@@ -36,7 +37,6 @@ func main() {
 	
 	
 	app := fiber.New()
-	app.Get("/swagger/*",swagger.HandlerDefault)
 	allowedOrigins := "http://localhost:5173,https://go-restapi-production.up.railway.app:8080"
 	allowedOriginsList := strings.Split(allowedOrigins, ",")
 
@@ -59,6 +59,8 @@ func main() {
 	db.Init()
 	models.Setup(db.DB)
 	routes.Setup(app)
+
+	app.Get("/swagger/*", swagger.HandlerDefault) // default
 
 	log.Fatal(app.Listen(getPort()))
 }
