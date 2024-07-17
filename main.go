@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/swagger"
 	"github.com/joho/godotenv"
 	"github.com/raihan1405/go-restapi/db"
 	"github.com/raihan1405/go-restapi/models"
@@ -21,9 +22,13 @@ func getPort() string {
 	return "0.0.0.0:" + port
 
 }
-
+// @title           Swagger Example API
+// @version         1.0
+// @description     This is a sample server celler server.
+// @termsOfService  http://swagger.io/terms/
 func main() {
 
+	
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -31,6 +36,7 @@ func main() {
 	
 	
 	app := fiber.New()
+	app.Get("/swagger/*",swagger.HandlerDefault)
 	allowedOrigins := "http://localhost:5173,https://go-restapi-production.up.railway.app:8080"
 	allowedOriginsList := strings.Split(allowedOrigins, ",")
 
