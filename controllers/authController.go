@@ -15,35 +15,35 @@ import (
 const secretKey = "secret"
 
 // Register godoc
-//	@Summary		Register a new user
-//	@Description	Register a new user with the provided details
-//	@Tags			auth
-//	@Accept			json
-//	@Produce		json
-//	@Param			register	body		validators.RegisterInput	true	"User registration details"
-//	@Success		200			{object}	models.User
-//	@Failure		400			{object}	fiber.Map
-//	@Failure		500			{object}	fiber.Map
-//	@Router			/api/register [post]
+// @Summary Register a new user
+// @Description Register a new user with the provided details
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param register body validators.RegisterInput true "User registration details"
+// @Success 200 {object} models.User
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/register [post]
 func Register(c *fiber.Ctx) error {
 	var data validators.RegisterInput
 
 	// Parse data into the structure
 	err := c.BodyParser(&data)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
 	}
 
 	// Validate input data
 	err = validators.Validate.Struct(data)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
 	}
 
 	// Generate hashed password
 	password, err := bcrypt.GenerateFromPassword([]byte(data.Password), 14)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Cannot hash password"})
+		return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"error": "Cannot hash password"})
 	}
 
 	// Create user
@@ -60,41 +60,41 @@ func Register(c *fiber.Ctx) error {
 }
 
 // Login godoc
-//	@Summary		Log in a user
-//	@Description	Log in a user with the provided credentials
-//	@Tags			auth
-//	@Accept			json
-//	@Produce		json
-//	@Param			login	body		validators.LoginInput	true	"User login details"
-//	@Success		200		{object}	fiber.Map
-//	@Failure		400		{object}	fiber.Map
-//	@Failure		404		{object}	fiber.Map
-//	@Failure		401		{object}	fiber.Map
-//	@Failure		500		{object}	fiber.Map
-//	@Router			/api/login [post]
+// @Summary Log in a user
+// @Description Log in a user with the provided credentials
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param login body validators.LoginInput true "User login details"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/login [post]
 func Login(c *fiber.Ctx) error {
 	var data validators.LoginInput
 
 	err := c.BodyParser(&data)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse JSON"})
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
 	}
 
 	err = validators.Validate.Struct(data)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
 	}
 
 	var user models.User
 	db.DB.Where("email = ?", data.Email).First(&user)
 
 	if user.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"message": "user not found"})
+		return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"message": "user not found"})
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(data.Password))
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "incorrect password"})
+		return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "incorrect password"})
 	}
 
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
@@ -104,7 +104,7 @@ func Login(c *fiber.Ctx) error {
 
 	token, err := claims.SignedString([]byte(secretKey))
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "could not login"})
+		return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"message": "could not login"})
 	}
 
 	cookie := fiber.Cookie{
@@ -115,17 +115,17 @@ func Login(c *fiber.Ctx) error {
 	}
 	c.Cookie(&cookie)
 
-	return c.JSON(fiber.Map{"message": "success"})
+	return c.JSON(map[string]interface{}{"message": "success"})
 }
 
 // User godoc
-//	@Summary		Get the authenticated user
-//	@Description	Get the authenticated user based on the JWT token
-//	@Tags			user
-//	@Produce		json
-//	@Success		200	{object}	models.User
-//	@Failure		401	{object}	fiber.Map
-//	@Router			/api/user [get]
+// @Summary Get the authenticated user
+// @Description Get the authenticated user based on the JWT token
+// @Tags user
+// @Produce json
+// @Success 200 {object} models.User
+// @Failure 401 {object} map[string]interface{}
+// @Router /api/user [get]
 func User(c *fiber.Ctx) error {
 	cookie := c.Cookies("jwt")
 	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
@@ -133,7 +133,7 @@ func User(c *fiber.Ctx) error {
 	})
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "unauthenticated"})
+		return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "unauthenticated"})
 	}
 	claims := token.Claims.(*jwt.StandardClaims)
 
@@ -144,12 +144,12 @@ func User(c *fiber.Ctx) error {
 }
 
 // Logout godoc
-//	@Summary		Log out the authenticated user
-//	@Description	Log out the authenticated user by clearing the JWT cookie
-//	@Tags			auth
-//	@Produce		json
-//	@Success		200	{object}	fiber.Map
-//	@Router			/api/logout [post]
+// @Summary Log out the authenticated user
+// @Description Log out the authenticated user by clearing the JWT cookie
+// @Tags auth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /api/logout [post]
 func Logout(c *fiber.Ctx) error {
 	cookie := fiber.Cookie{
 		Name:     "jwt",
@@ -160,5 +160,5 @@ func Logout(c *fiber.Ctx) error {
 
 	c.Cookie(&cookie)
 
-	return c.JSON(fiber.Map{"message": "logout success"})
+	return c.JSON(map[string]interface{}{"message": "logout success"})
 }
