@@ -14,6 +14,55 @@ import (
 
 const secretKey = "secret"
 
+// UpdateUser godoc
+// @Summary Update user details
+// @Description Update user details with the provided information
+// @Tags user
+// @Accept json
+// @Produce json
+// @Param update body validators.UpdateUserInput true "User update details"
+// @Success 200 {object} models.User
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/updateProfile [put]
+func UpdateProfile(c *fiber.Ctx) error {
+    cookie := c.Cookies("jwt")
+    token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+        return []byte(secretKey), nil
+    })
+
+    if err != nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "unauthenticated"})
+    }
+    claims := token.Claims.(*jwt.StandardClaims)
+
+    var data validators.UpdateUserInput
+    err = c.BodyParser(&data)
+    if err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
+    }
+
+    err = validators.Validate.Struct(data)
+    if err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
+    }
+
+    var user models.User
+    db.DB.Where("id = ?", claims.Issuer).First(&user)
+    if user.ID == 0 {
+        return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"message": "user not found"})
+    }
+
+    user.Username = data.Username
+    user.Email = data.Email
+    user.PhoneNumber = data.PhoneNumber
+
+    db.DB.Save(&user)
+
+    return c.JSON(user)
+}
+
 // Register godoc
 // @Summary Register a new user
 // @Description Register a new user with the provided details

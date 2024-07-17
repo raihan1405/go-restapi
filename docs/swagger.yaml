@@ -46,6 +46,19 @@ definitions:
     - phoneNumber
     - username
     type: object
+  validators.UpdateUserInput:
+    properties:
+      email:
+        type: string
+      phone_number:
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - phone_number
+    - username
+    type: object
 info:
   contact: {}
   description: This is a sample server celler server.
@@ -142,6 +155,43 @@ paths:
       summary: Register a new user
       tags:
       - auth
+  /api/updateProfile:
+    put:
+      consumes:
+      - application/json
+      description: Update user details with the provided information
+      parameters:
+      - description: User update details
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/validators.UpdateUserInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update user details
+      tags:
+      - user
   /api/user:
     get:
       description: Get the authenticated user based on the JWT token

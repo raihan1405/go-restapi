@@ -15,3 +15,9 @@ type LoginInput struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required"`
 }
+
+type UpdateUserInput struct {
+    Username    string `json:"username" validate:"required"`
+    Email       string `json:"email" validate:"required,email"`
+    PhoneNumber string `json:"phone_number" validate:"required"`
+}
