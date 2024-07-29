@@ -27,49 +27,49 @@ const secretKey = "secret"
 // @Failure 404 {object} map[string]interface{}
 // @Router /api/user/password [put]
 func UpdatePassword(c *fiber.Ctx) error {
-    cookie := c.Cookies("jwt")
-    token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
-        return []byte(secretKey), nil
-    })
+	cookie := c.Cookies("jwt")
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secretKey), nil
+	})
 
-    if err != nil {
-        return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "unauthenticated"})
-    }
-    claims := token.Claims.(*jwt.StandardClaims)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "unauthenticated"})
+	}
+	claims := token.Claims.(*jwt.StandardClaims)
 
-    var data validators.UpdatePasswordInput
-    err = c.BodyParser(&data)
-    if err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
-    }
+	var data validators.UpdatePasswordInput
+	err = c.BodyParser(&data)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
+	}
 
-    err = validators.Validate.Struct(data)
-    if err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
-    }
+	err = validators.Validate.Struct(data)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
+	}
 
-    var user models.User
-    db.DB.Where("id = ?", claims.Issuer).First(&user)
-    if user.ID == 0 {
-        return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"message": "user not found"})
-    }
+	var user models.User
+	db.DB.Where("id = ?", claims.Issuer).First(&user)
+	if user.ID == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"message": "user not found"})
+	}
 
-    // Verify old password
-    err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(data.OldPassword))
-    if err != nil {
-        return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "incorrect old password"})
-    }
+	// Verify old password
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(data.OldPassword))
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "incorrect old password"})
+	}
 
-    // Generate new hashed password
-    newPassword, err := bcrypt.GenerateFromPassword([]byte(data.NewPassword), 14)
-    if err != nil {
-        return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"error": "Cannot hash new password"})
-    }
+	// Generate new hashed password
+	newPassword, err := bcrypt.GenerateFromPassword([]byte(data.NewPassword), 14)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"error": "Cannot hash new password"})
+	}
 
-    user.Password = newPassword
-    db.DB.Save(&user)
+	user.Password = newPassword
+	db.DB.Save(&user)
 
-    return c.JSON(map[string]interface{}{"message": "password updated successfully"})
+	return c.JSON(map[string]interface{}{"message": "password updated successfully"})
 }
 
 // UpdateUser godoc
@@ -85,40 +85,40 @@ func UpdatePassword(c *fiber.Ctx) error {
 // @Failure 404 {object} map[string]interface{}
 // @Router /api/updateProfile [put]
 func UpdateProfile(c *fiber.Ctx) error {
-    cookie := c.Cookies("jwt")
-    token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
-        return []byte(secretKey), nil
-    })
+	cookie := c.Cookies("jwt")
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secretKey), nil
+	})
 
-    if err != nil {
-        return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "unauthenticated"})
-    }
-    claims := token.Claims.(*jwt.StandardClaims)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "unauthenticated"})
+	}
+	claims := token.Claims.(*jwt.StandardClaims)
 
-    var data validators.UpdateUserInput
-    err = c.BodyParser(&data)
-    if err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
-    }
+	var data validators.UpdateUserInput
+	err = c.BodyParser(&data)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
+	}
 
-    err = validators.Validate.Struct(data)
-    if err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
-    }
+	err = validators.Validate.Struct(data)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
+	}
 
-    var user models.User
-    db.DB.Where("id = ?", claims.Issuer).First(&user)
-    if user.ID == 0 {
-        return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"message": "user not found"})
-    }
+	var user models.User
+	db.DB.Where("id = ?", claims.Issuer).First(&user)
+	if user.ID == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"message": "user not found"})
+	}
 
-    user.Username = data.Username
-    user.Email = data.Email
-    user.PhoneNumber = data.PhoneNumber
+	user.Username = data.Username
+	user.Email = data.Email
+	user.PhoneNumber = data.PhoneNumber
 
-    db.DB.Save(&user)
+	db.DB.Save(&user)
 
-    return c.JSON(user)
+	return c.JSON(user)
 }
 
 // Register godoc

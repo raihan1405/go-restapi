@@ -37,7 +37,7 @@ func main() {
 	
 	
 	app := fiber.New()
-	allowedOrigins := "http://localhost:5173,https://go-restapi-production.up.railway.app:8080"
+	allowedOrigins := "http://localhost:5173,https://go-restapi-production.up.railway.app:8080","https://sjr-app-dev-6rs5.vercel.app/"
 	allowedOriginsList := strings.Split(allowedOrigins, ",")
 
 	// Set up CORS middleware with dynamic origin checking
