@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"os"
 	"strconv"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const secretKey = "secret"
+var secretKey = os.Getenv("JWT_SECRET")
 
 // UpdatePassword godoc
 // @Summary Update user password
@@ -205,9 +206,10 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
-		Issuer:    strconv.Itoa(int(user.ID)),
+		Subject:   strconv.Itoa(int(user.ID)), // Set user ID ke dalam klaim `sub`
 		ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 	})
+	
 
 	token, err := claims.SignedString([]byte(secretKey))
 	if err != nil {
@@ -234,20 +236,30 @@ func Login(c *fiber.Ctx) error {
 // @Failure 401 {object} map[string]interface{}
 // @Router /api/user [get]
 func User(c *fiber.Ctx) error {
-	cookie := c.Cookies("jwt")
-	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(secretKey), nil
-	})
+    cookie := c.Cookies("jwt")
+    token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+        return []byte(secretKey), nil
+    })
 
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "unauthenticated"})
-	}
-	claims := token.Claims.(*jwt.StandardClaims)
+    if err != nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "unauthenticated"})
+    }
 
-	var user models.User
-	db.DB.Where("id = ?", claims.Issuer).First(&user)
+    claims := token.Claims.(*jwt.StandardClaims)
+    userID := claims.Subject
 
-	return c.JSON(user)
+    if userID == "" {
+        return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "Invalid user ID in token"})
+    }
+
+    var user models.User
+    db.DB.Where("id = ?", userID).First(&user)
+
+    if user.ID == 0 {
+        return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"message": "user not found"})
+    }
+
+    return c.JSON(user)
 }
 
 // Logout godoc

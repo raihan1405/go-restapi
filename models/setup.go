@@ -8,5 +8,6 @@ func Setup(db *gorm.DB) {
 	)
 	db.AutoMigrate(
 		&User{},
+		&Product{},
 	)
 }
