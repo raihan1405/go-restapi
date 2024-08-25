@@ -72,8 +72,6 @@ func AddProduct(c *fiber.Ctx) error {
 }
 
 
-
-
 // GetAllProducts godoc
 // @Summary Get all products
 // @Description Get a list of all products
