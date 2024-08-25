@@ -10,6 +10,16 @@ import (
 	"github.com/raihan1405/go-restapi/validators"
 )
 
+// ErrorResponse digunakan untuk mengembalikan pesan error yang lebih jelas
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+// SuccessResponse digunakan untuk mengembalikan pesan sukses
+type SuccessResponse struct {
+	Message string `json:"message"`
+}
+
 // AddToCart godoc
 // @Summary Add a product to cart
 // @Description Add a product to the user's cart
@@ -18,39 +28,39 @@ import (
 // @Produce json
 // @Param cart body validators.AddToCartInput true "Cart item details"
 // @Success 200 {object} models.CartItem
-// @Failure 400 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
 // @Router /api/cart [post]
 func AddToCart(c *fiber.Ctx) error {
 	user, ok := c.Locals("user").(*jwt.Token)
 	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Unauthorized"})
 	}
 
 	claims, ok := user.Claims.(jwt.MapClaims)
 	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token claims"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Invalid token claims"})
 	}
 
 	userID, ok := claims["sub"].(string)
 	if !ok || userID == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid user ID in token"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Invalid user ID in token"})
 	}
 
 	var data validators.AddToCartInput
 
 	if err := c.BodyParser(&data); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: "Cannot parse JSON"})
 	}
 
 	if err := validators.Validate.Struct(data); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: err.Error()})
 	}
 
 	// Find the product
 	var product models.Product
 	if err := db.DB.First(&product, data.ProductID).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"error": "Product not found"})
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{Error: "Product not found"})
 	}
 
 	// Create cart item
@@ -62,7 +72,7 @@ func AddToCart(c *fiber.Ctx) error {
 
 	// Save cart item to database
 	if err := db.DB.Create(&cartItem).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"error": "Cannot add product to cart"})
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Cannot add product to cart"})
 	}
 
 	return c.JSON(cartItem)
@@ -74,29 +84,29 @@ func AddToCart(c *fiber.Ctx) error {
 // @Tags cart
 // @Produce json
 // @Success 200 {array} models.CartItem
-// @Failure 500 {object} map[string]interface{}
+// @Failure 500 {object} ErrorResponse
 // @Router /api/cart [get]
 func GetCart(c *fiber.Ctx) error {
 	user, ok := c.Locals("user").(*jwt.Token)
 	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Unauthorized"})
 	}
 
 	claims, ok := user.Claims.(jwt.MapClaims)
 	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token claims"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Invalid token claims"})
 	}
 
 	userID, ok := claims["sub"].(string)
 	if !ok || userID == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid user ID in token"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Invalid user ID in token"})
 	}
 
 	var cartItems []models.CartItem
 
 	// Retrieve all cart items for the user from the database
 	if err := db.DB.Where("user_id = ?", userID).Find(&cartItems).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"error": "Cannot retrieve cart items"})
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Cannot retrieve cart items"})
 	}
 
 	return c.JSON(cartItems)
@@ -107,43 +117,43 @@ func GetCart(c *fiber.Ctx) error {
 // @Description Remove an item from the user's cart by ID
 // @Tags cart
 // @Param id path int true "Cart Item ID"
-// @Success 200 {object} map[string]interface{}{"message": "Item removed from cart"}
-// @Failure 400 {object} map[string]interface{}
-// @Failure 404 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
 // @Router /api/cart/{id} [delete]
 func RemoveFromCart(c *fiber.Ctx) error {
 	user, ok := c.Locals("user").(*jwt.Token)
 	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Unauthorized"})
 	}
 
 	claims, ok := user.Claims.(jwt.MapClaims)
 	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token claims"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Invalid token claims"})
 	}
 
 	userID, ok := claims["sub"].(string)
 	if !ok || userID == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid user ID in token"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Invalid user ID in token"})
 	}
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Invalid cart item ID"})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: "Invalid cart item ID"})
 	}
 
 	var cartItem models.CartItem
 	if err := db.DB.Where("id = ? AND user_id = ?", id, userID).First(&cartItem).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"error": "Cart item not found"})
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{Error: "Cart item not found"})
 	}
 
 	// Delete the cart item
 	if err := db.DB.Delete(&cartItem).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"error": "Cannot remove cart item"})
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Cannot remove cart item"})
 	}
 
-	return c.JSON(fiber.Map{"message": "Item removed from cart"})
+	return c.JSON(SuccessResponse{Message: "Item removed from cart"})
 }
 
 // UpdateCartItem godoc
@@ -155,50 +165,50 @@ func RemoveFromCart(c *fiber.Ctx) error {
 // @Param id path int true "Cart Item ID"
 // @Param cart body validators.UpdateCartItemInput true "Updated cart item details"
 // @Success 200 {object} models.CartItem
-// @Failure 400 {object} map[string]interface{}
-// @Failure 404 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
 // @Router /api/cart/{id} [put]
 func UpdateCartItem(c *fiber.Ctx) error {
 	user, ok := c.Locals("user").(*jwt.Token)
 	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Unauthorized"})
 	}
 
 	claims, ok := user.Claims.(jwt.MapClaims)
 	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token claims"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Invalid token claims"})
 	}
 
 	userID, ok := claims["sub"].(string)
 	if !ok || userID == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid user ID in token"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Invalid user ID in token"})
 	}
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Invalid cart item ID"})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: "Invalid cart item ID"})
 	}
 
 	var data validators.UpdateCartItemInput
 	if err := c.BodyParser(&data); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: "Cannot parse JSON"})
 	}
 
 	if err := validators.Validate.Struct(data); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: err.Error()})
 	}
 
 	var cartItem models.CartItem
 	if err := db.DB.Where("id = ? AND user_id = ?", id, userID).First(&cartItem).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"error": "Cart item not found"})
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{Error: "Cart item not found"})
 	}
 
 	// Update the cart item quantity
 	cartItem.Quantity = data.Quantity
 
 	if err := db.DB.Save(&cartItem).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"error": "Cannot update cart item"})
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Cannot update cart item"})
 	}
 
 	return c.JSON(cartItem)
