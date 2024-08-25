@@ -192,7 +192,7 @@ const docTemplate = `{
         },
         "/api/login": {
             "post": {
-                "description": "Log in a user with the provided credentials",
+                "description": "Log in a user with the provided credentials and return user data",
                 "consumes": [
                     "application/json"
                 ],
@@ -507,33 +507,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/api/user": {
-            "get": {
-                "description": "Get the authenticated user based on the JWT token",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "user"
-                ],
-                "summary": "Get the authenticated user",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.User"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true

@@ -169,7 +169,7 @@ func Register(c *fiber.Ctx) error {
 
 // Login godoc
 // @Summary Log in a user
-// @Description Log in a user with the provided credentials
+// @Description Log in a user with the provided credentials and return user data
 // @Tags auth
 // @Accept json
 // @Produce json
@@ -183,39 +183,45 @@ func Register(c *fiber.Ctx) error {
 func Login(c *fiber.Ctx) error {
 	var data validators.LoginInput
 
+	// Parse JSON data
 	err := c.BodyParser(&data)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
 	}
 
+	// Validate input
 	err = validators.Validate.Struct(data)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
 	}
 
+	// Find user by email
 	var user models.User
 	db.DB.Where("email = ?", data.Email).First(&user)
 
+	// Check if user exists
 	if user.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"message": "user not found"})
+		return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"message": "User not found"})
 	}
 
+	// Compare password
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(data.Password))
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "incorrect password"})
+		return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "Incorrect password"})
 	}
 
+	// Generate JWT token
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
-		Subject:   strconv.Itoa(int(user.ID)), // Set user ID ke dalam klaim `sub`
-		ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
+		Subject:   strconv.Itoa(int(user.ID)),
+		ExpiresAt: time.Now().Add(time.Hour * 24).Unix(), // Token expires in 24 hours
 	})
-	
 
 	token, err := claims.SignedString([]byte(secretKey))
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"message": "could not login"})
+		return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"message": "Could not login"})
 	}
 
+	// Set cookie with JWT token
 	cookie := fiber.Cookie{
 		Name:     "jwt",
 		Value:    token,
@@ -224,42 +230,17 @@ func Login(c *fiber.Ctx) error {
 	}
 	c.Cookie(&cookie)
 
-	return c.JSON(map[string]interface{}{"message": "success"})
-}
-
-// User godoc
-// @Summary Get the authenticated user
-// @Description Get the authenticated user based on the JWT token
-// @Tags user
-// @Produce json
-// @Success 200 {object} models.User
-// @Failure 401 {object} map[string]interface{}
-// @Router /api/user [get]
-func User(c *fiber.Ctx) error {
-    cookie := c.Cookies("jwt")
-    token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
-        return []byte(secretKey), nil
-    })
-
-    if err != nil {
-        return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "unauthenticated"})
-    }
-
-    claims := token.Claims.(*jwt.StandardClaims)
-    userID := claims.Subject
-
-    if userID == "" {
-        return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "Invalid user ID in token"})
-    }
-
-    var user models.User
-    db.DB.Where("id = ?", userID).First(&user)
-
-    if user.ID == 0 {
-        return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"message": "user not found"})
-    }
-
-    return c.JSON(user)
+	// Return user data along with the token
+	return c.JSON(map[string]interface{}{
+		"message": "Login successful",
+		"token":   token,
+		"user": map[string]interface{}{
+			"id":          user.ID,
+			"username":    user.Username,
+			"email":       user.Email,
+			"phoneNumber": user.PhoneNumber,
+		},
+	})
 }
 
 // Logout godoc

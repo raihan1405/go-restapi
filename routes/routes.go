@@ -21,7 +21,7 @@ func Setup(app *fiber.App) {
 	}))
 
 	// Rute yang dilindungi oleh JWT middleware
-	api.Get("/user", controllers.User)
+	
 	api.Post("/logout", controllers.Logout)
 	api.Put("/user", controllers.UpdateProfile)
 	api.Put("/user/password", controllers.UpdatePassword)
