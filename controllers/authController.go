@@ -15,6 +15,53 @@ import (
 
 var secretKey = os.Getenv("JWT_SECRET")
 
+// Definisikan struktur respons sukses
+type LoginResponse struct {
+	Message string `json:"message"`
+	Token   string `json:"token"`
+	User    struct {
+		ID          uint   `json:"id"`
+		Username    string `json:"username"`
+		Email       string `json:"email"`
+		PhoneNumber string `json:"phoneNumber"`
+	} `json:"user"`
+}
+
+// Definisikan struktur respons kesalahan
+type ErrorResponse struct {
+	Message string `json:"message"`
+	Error   string `json:"error"`
+}
+
+// GetUser godoc
+// @Summary Get authenticated user details
+// @Description Get details of the authenticated user based on the JWT token
+// @Tags user
+// @Produce json
+// @Success 200 {object} models.User
+// @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/user [get]
+func GetUser(c *fiber.Ctx) error {
+	cookie := c.Cookies("jwt")
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secretKey), nil
+	})
+
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{"unauthenticated", err.Error()})
+	}
+	claims := token.Claims.(*jwt.StandardClaims)
+
+	var user models.User
+	db.DB.Where("id = ?", claims.Issuer).First(&user)
+	if user.ID == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{"user not found", "No user with the given ID"})
+	}
+
+	return c.JSON(user)
+}
+
 // UpdatePassword godoc
 // @Summary Update user password
 // @Description Update user password with the provided old and new passwords
@@ -23,9 +70,9 @@ var secretKey = os.Getenv("JWT_SECRET")
 // @Produce json
 // @Param update body validators.UpdatePasswordInput true "User update password details"
 // @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
-// @Failure 401 {object} map[string]interface{}
-// @Failure 404 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
 // @Router /api/user/password [put]
 func UpdatePassword(c *fiber.Ctx) error {
 	cookie := c.Cookies("jwt")
@@ -34,37 +81,37 @@ func UpdatePassword(c *fiber.Ctx) error {
 	})
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "unauthenticated"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{"unauthenticated", err.Error()})
 	}
 	claims := token.Claims.(*jwt.StandardClaims)
 
 	var data validators.UpdatePasswordInput
 	err = c.BodyParser(&data)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Cannot parse JSON", err.Error()})
 	}
 
 	err = validators.Validate.Struct(data)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Validation error", err.Error()})
 	}
 
 	var user models.User
 	db.DB.Where("id = ?", claims.Issuer).First(&user)
 	if user.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"message": "user not found"})
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{"user not found", "No user with the given ID"})
 	}
 
 	// Verify old password
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(data.OldPassword))
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "incorrect old password"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{"incorrect old password", err.Error()})
 	}
 
 	// Generate new hashed password
 	newPassword, err := bcrypt.GenerateFromPassword([]byte(data.NewPassword), 14)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"error": "Cannot hash new password"})
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{"Cannot hash new password", err.Error()})
 	}
 
 	user.Password = newPassword
@@ -73,7 +120,7 @@ func UpdatePassword(c *fiber.Ctx) error {
 	return c.JSON(map[string]interface{}{"message": "password updated successfully"})
 }
 
-// UpdateUser godoc
+// UpdateProfile godoc
 // @Summary Update user details
 // @Description Update user details with the provided information
 // @Tags user
@@ -81,10 +128,10 @@ func UpdatePassword(c *fiber.Ctx) error {
 // @Produce json
 // @Param update body validators.UpdateUserInput true "User update details"
 // @Success 200 {object} models.User
-// @Failure 400 {object} map[string]interface{}
-// @Failure 401 {object} map[string]interface{}
-// @Failure 404 {object} map[string]interface{}
-// @Router /api/updateProfile [put]
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/user [put]
 func UpdateProfile(c *fiber.Ctx) error {
 	cookie := c.Cookies("jwt")
 	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
@@ -92,25 +139,25 @@ func UpdateProfile(c *fiber.Ctx) error {
 	})
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "unauthenticated"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{"unauthenticated", err.Error()})
 	}
 	claims := token.Claims.(*jwt.StandardClaims)
 
 	var data validators.UpdateUserInput
 	err = c.BodyParser(&data)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Cannot parse JSON", err.Error()})
 	}
 
 	err = validators.Validate.Struct(data)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Validation error", err.Error()})
 	}
 
 	var user models.User
 	db.DB.Where("id = ?", claims.Issuer).First(&user)
 	if user.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"message": "user not found"})
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{"user not found", "No user with the given ID"})
 	}
 
 	user.Username = data.Username
@@ -130,8 +177,8 @@ func UpdateProfile(c *fiber.Ctx) error {
 // @Produce json
 // @Param register body validators.RegisterInput true "User registration details"
 // @Success 200 {object} models.User
-// @Failure 400 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
 // @Router /api/register [post]
 func Register(c *fiber.Ctx) error {
 	var data validators.RegisterInput
@@ -139,19 +186,19 @@ func Register(c *fiber.Ctx) error {
 	// Parse data into the structure
 	err := c.BodyParser(&data)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Cannot parse JSON", err.Error()})
 	}
 
 	// Validate input data
 	err = validators.Validate.Struct(data)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Validation error", err.Error()})
 	}
 
 	// Generate hashed password
 	password, err := bcrypt.GenerateFromPassword([]byte(data.Password), 14)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"error": "Cannot hash password"})
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{"Cannot hash password", err.Error()})
 	}
 
 	// Create user
@@ -174,11 +221,11 @@ func Register(c *fiber.Ctx) error {
 // @Accept json
 // @Produce json
 // @Param login body validators.LoginInput true "User login details"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
-// @Failure 404 {object} map[string]interface{}
-// @Failure 401 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
 // @Router /api/login [post]
 func Login(c *fiber.Ctx) error {
 	var data validators.LoginInput
@@ -186,13 +233,13 @@ func Login(c *fiber.Ctx) error {
 	// Parse JSON data
 	err := c.BodyParser(&data)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Cannot parse JSON", err.Error()})
 	}
 
 	// Validate input
 	err = validators.Validate.Struct(data)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Validation error", err.Error()})
 	}
 
 	// Find user by email
@@ -201,13 +248,13 @@ func Login(c *fiber.Ctx) error {
 
 	// Check if user exists
 	if user.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"message": "User not found"})
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{"User not found", "No user with the given email"})
 	}
 
 	// Compare password
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(data.Password))
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"message": "Incorrect password"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{"Incorrect password", err.Error()})
 	}
 
 	// Generate JWT token
@@ -218,7 +265,7 @@ func Login(c *fiber.Ctx) error {
 
 	token, err := claims.SignedString([]byte(secretKey))
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"message": "Could not login"})
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{"Could not login", err.Error()})
 	}
 
 	// Set cookie with JWT token
@@ -231,14 +278,19 @@ func Login(c *fiber.Ctx) error {
 	c.Cookie(&cookie)
 
 	// Return user data along with the token
-	return c.JSON(map[string]interface{}{
-		"message": "Login successful",
-		"token":   token,
-		"user": map[string]interface{}{
-			"id":          user.ID,
-			"username":    user.Username,
-			"email":       user.Email,
-			"phoneNumber": user.PhoneNumber,
+	return c.JSON(LoginResponse{
+		Message: "Login successful",
+		Token:   token,
+		User: struct {
+			ID          uint   `json:"id"`
+			Username    string `json:"username"`
+			Email       string `json:"email"`
+			PhoneNumber string `json:"phoneNumber"`
+		}{
+			ID:          user.ID,
+			Username:    user.Username,
+			Email:       user.Email,
+			PhoneNumber: user.PhoneNumber,
 		},
 	})
 }
