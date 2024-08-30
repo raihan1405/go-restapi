@@ -10,11 +10,6 @@ import (
 	"github.com/raihan1405/go-restapi/validators"
 )
 
-// ErrorResponse digunakan untuk mengembalikan pesan error yang lebih jelas
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
-
 // SuccessResponse digunakan untuk mengembalikan pesan sukses
 type SuccessResponse struct {
 	Message string `json:"message"`

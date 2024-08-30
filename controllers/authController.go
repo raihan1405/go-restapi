@@ -287,7 +287,7 @@ func Login(c *fiber.Ctx) error {
 			Email       string `json:"email"`
 			PhoneNumber string `json:"phoneNumber"`
 		}{
-			ID:          user.ID,
+			ID:           uint(user.ID),
 			Username:    user.Username,
 			Email:       user.Email,
 			PhoneNumber: user.PhoneNumber,
