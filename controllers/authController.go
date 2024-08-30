@@ -43,24 +43,57 @@ type ErrorResponse struct {
 // @Failure 404 {object} ErrorResponse
 // @Router /api/user [get]
 func GetUser(c *fiber.Ctx) error {
-	cookie := c.Cookies("jwt")
-	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(secretKey), nil
-	})
+    // Retrieve the JWT token from the cookies
+    cookie := c.Cookies("jwt")
 
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{"unauthenticated", err.Error()})
-	}
-	claims := token.Claims.(*jwt.StandardClaims)
+    // Parse the JWT token and extract the claims
+    token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+        return []byte(secretKey), nil
+    })
 
-	var user models.User
-	db.DB.Where("id = ?", claims.Issuer).First(&user)
-	if user.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{"user not found", "No user with the given ID"})
-	}
+    // Handle error if token is invalid or parsing fails
+    if err != nil || !token.Valid {
+        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+            Message: "unauthenticated",
+            Error:   "Invalid or expired token",
+        })
+    }
 
-	return c.JSON(user)
+    // Extract the claims and cast to the correct type
+    claims, ok := token.Claims.(*jwt.StandardClaims)
+    if !ok {
+        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+            Message: "unauthenticated",
+            Error:   "Invalid token claims",
+        })
+    }
+
+    // Convert the Subject (which is the user ID in string format) to an integer
+    userID, err := strconv.Atoi(claims.Subject)
+    if err != nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+            Message: "Invalid token",
+            Error:   "Token contains invalid user ID",
+        })
+    }
+
+    // Retrieve the user from the database using the converted user ID
+    var user models.User
+    db.DB.Where("id = ?", userID).First(&user)
+
+    // If user is not found, return a 404 error
+    if user.ID == 0 {
+        return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+            Message: "user not found",
+            Error:   "No user with the given ID",
+        })
+    }
+
+    // Return the user details as the response
+    return c.JSON(user)
 }
+
+
 
 // UpdatePassword godoc
 // @Summary Update user password
@@ -287,7 +320,7 @@ func Login(c *fiber.Ctx) error {
 			Email       string `json:"email"`
 			PhoneNumber string `json:"phoneNumber"`
 		}{
-			ID:           uint(user.ID),
+			ID:          uint(user.ID),
 			Username:    user.Username,
 			Email:       user.Email,
 			PhoneNumber: user.PhoneNumber,
