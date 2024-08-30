@@ -108,50 +108,57 @@ func GetUser(c *fiber.Ctx) error {
 // @Failure 404 {object} ErrorResponse
 // @Router /api/user/password [put]
 func UpdatePassword(c *fiber.Ctx) error {
-	cookie := c.Cookies("jwt")
-	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(secretKey), nil
-	})
+    cookie := c.Cookies("jwt")
+    token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+        return []byte(secretKey), nil
+    })
 
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{"unauthenticated", err.Error()})
-	}
-	claims := token.Claims.(*jwt.StandardClaims)
+    if err != nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{"unauthenticated", err.Error()})
+    }
+    claims := token.Claims.(*jwt.StandardClaims)
 
-	var data validators.UpdatePasswordInput
-	err = c.BodyParser(&data)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Cannot parse JSON", err.Error()})
-	}
+    // Convert claims.Subject to integer
+    userID, err := strconv.Atoi(claims.Subject)
+    if err != nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{"Invalid token", "Token contains invalid user ID"})
+    }
 
-	err = validators.Validate.Struct(data)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Validation error", err.Error()})
-	}
+    var data validators.UpdatePasswordInput
+    err = c.BodyParser(&data)
+    if err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Cannot parse JSON", err.Error()})
+    }
 
-	var user models.User
-	db.DB.Where("id = ?", claims.Issuer).First(&user)
-	if user.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{"user not found", "No user with the given ID"})
-	}
+    err = validators.Validate.Struct(data)
+    if err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Validation error", err.Error()})
+    }
 
-	// Verify old password
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(data.OldPassword))
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{"incorrect old password", err.Error()})
-	}
+    var user models.User
+    db.DB.Where("id = ?", userID).First(&user)
+    if user.ID == 0 {
+        return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{"user not found", "No user with the given ID"})
+    }
 
-	// Generate new hashed password
-	newPassword, err := bcrypt.GenerateFromPassword([]byte(data.NewPassword), 14)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{"Cannot hash new password", err.Error()})
-	}
+    // Verify old password
+    err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(data.OldPassword))
+    if err != nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{"incorrect old password", err.Error()})
+    }
 
-	user.Password = newPassword
-	db.DB.Save(&user)
+    // Generate new hashed password
+    newPassword, err := bcrypt.GenerateFromPassword([]byte(data.NewPassword), 14)
+    if err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{"Cannot hash new password", err.Error()})
+    }
 
-	return c.JSON(map[string]interface{}{"message": "password updated successfully"})
+    user.Password = newPassword
+    db.DB.Save(&user)
+
+    return c.JSON(map[string]interface{}{"message": "password updated successfully"})
 }
+
 
 // UpdateProfile godoc
 // @Summary Update user details
@@ -166,41 +173,48 @@ func UpdatePassword(c *fiber.Ctx) error {
 // @Failure 404 {object} ErrorResponse
 // @Router /api/user [put]
 func UpdateProfile(c *fiber.Ctx) error {
-	cookie := c.Cookies("jwt")
-	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(secretKey), nil
-	})
+    cookie := c.Cookies("jwt")
+    token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+        return []byte(secretKey), nil
+    })
 
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{"unauthenticated", err.Error()})
-	}
-	claims := token.Claims.(*jwt.StandardClaims)
+    if err != nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{"unauthenticated", err.Error()})
+    }
+    claims := token.Claims.(*jwt.StandardClaims)
 
-	var data validators.UpdateUserInput
-	err = c.BodyParser(&data)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Cannot parse JSON", err.Error()})
-	}
+    // Convert claims.Subject to integer
+    userID, err := strconv.Atoi(claims.Subject)
+    if err != nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{"Invalid token", "Token contains invalid user ID"})
+    }
 
-	err = validators.Validate.Struct(data)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Validation error", err.Error()})
-	}
+    var data validators.UpdateUserInput
+    err = c.BodyParser(&data)
+    if err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Cannot parse JSON", err.Error()})
+    }
 
-	var user models.User
-	db.DB.Where("id = ?", claims.Issuer).First(&user)
-	if user.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{"user not found", "No user with the given ID"})
-	}
+    err = validators.Validate.Struct(data)
+    if err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{"Validation error", err.Error()})
+    }
 
-	user.Username = data.Username
-	user.Email = data.Email
-	user.PhoneNumber = data.PhoneNumber
+    var user models.User
+    db.DB.Where("id = ?", userID).First(&user)
+    if user.ID == 0 {
+        return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{"user not found", "No user with the given ID"})
+    }
 
-	db.DB.Save(&user)
+    user.Username = data.Username
+    user.Email = data.Email
+    user.PhoneNumber = data.PhoneNumber
 
-	return c.JSON(user)
+    db.DB.Save(&user)
+
+    return c.JSON(user)
 }
+
 
 // Register godoc
 // @Summary Register a new user
