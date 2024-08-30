@@ -41,6 +41,7 @@ type EditProductInput struct {
     BrandName   string  `json:"brand_name" validate:"required,min=2,max=100"`
     Price       float64 `json:"price" validate:"required,gt=0"`
     Quantity    int     `json:"quantity" validate:"required,min=0"`
+    Category    string  `json:"category" validate:"required"`
 }
 
 type AddToCartInput struct {

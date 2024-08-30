@@ -105,39 +105,43 @@ func GetAllProducts(c *fiber.Ctx) error {
 // @Failure 500 {object} map[string]interface{}
 // @Router /api/products/{id} [put]
 func EditProduct(c *fiber.Ctx) error {
-	var data validators.EditProductInput
+	// Ambil ID produk dari parameter URL
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Invalid product ID"})
 	}
 
-	// Parse data into the structure
+	// Parsing data dari permintaan masuk ke dalam struktur
+	var data validators.EditProductInput
 	if err := c.BodyParser(&data); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
 	}
 
-	// Validate input data
+	// Validasi data input
 	if err := validators.Validate.Struct(data); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
 	}
 
-	// Find the product by ID
+	// Cari produk berdasarkan ID
 	var product models.Product
 	if err := db.DB.First(&product, id).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"error": "Product not found"})
 	}
 
-	// Update product details
+	// Perbarui detail produk
 	product.ProductName = data.ProductName
 	product.BrandName = data.BrandName
+	product.Category = data.Category  // Perbarui category jika tersedia
 	product.Price = int(data.Price)
 	product.Quantity = data.Quantity
 	product.Status = data.Quantity > 0
 
-	// Save changes to database
+	// Simpan perubahan ke database
 	if err := db.DB.Save(&product).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"error": "Cannot update product"})
 	}
 
+	// Kembalikan produk yang telah diperbarui sebagai respon
 	return c.JSON(product)
 }
+
