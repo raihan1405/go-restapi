@@ -307,6 +307,8 @@ func Login(c *fiber.Ctx) error {
 		Value:    token,
 		Expires:  time.Now().Add(time.Hour * 24),
 		HTTPOnly: true,
+        Secure:   true,  // This ensures the cookie is only sent over HTTPS
+        SameSite: "None", // Allows the cookie to be sent cross-domain
 	}
 	c.Cookie(&cookie)
 
