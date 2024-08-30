@@ -13,6 +13,9 @@ func Setup(app *fiber.App) {
 	// Rute publik yang tidak membutuhkan autentikasi
 	app.Post("/api/register", controllers.Register)
 	app.Post("/api/login", controllers.Login)
+	app.Post("/api/products", controllers.AddProduct)
+	app.Get("/api/products", controllers.GetAllProducts)
+	app.Put("/api/products/:id", controllers.EditProduct)
 
 	// Middleware JWT untuk melindungi rute di bawah ini
 	api := app.Group("/api", jwtware.New(jwtware.Config{
@@ -27,7 +30,5 @@ func Setup(app *fiber.App) {
 	api.Put("/user/password", controllers.UpdatePassword)
 
 	// Rute untuk produk
-	api.Post("/products", controllers.AddProduct)
-	api.Get("/products", controllers.GetAllProducts)
-	api.Put("/products/:id", controllers.EditProduct)
+	
 }
