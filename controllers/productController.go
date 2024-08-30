@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v4" // Menggunakan jwt dari golang-jwt/jwt/v4
+	//"github.com/golang-jwt/jwt/v4" // Menggunakan jwt dari golang-jwt/jwt/v4
 	"github.com/raihan1405/go-restapi/db"
 	"github.com/raihan1405/go-restapi/models"
 	"github.com/raihan1405/go-restapi/validators"
@@ -23,20 +23,20 @@ import (
 // @Router /api/products [post]
 func AddProduct(c *fiber.Ctx) error {
 	// Mendapatkan user dari context (yang di-set oleh middleware JWT)
-	user, ok := c.Locals("user").(*jwt.Token)
-	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
-	}
+	// user, ok := c.Locals("user").(*jwt.Token)
+	// if !ok {
+	// 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+	// }
 
-	claims, ok := user.Claims.(jwt.MapClaims)
-	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token claims"})
-	}
+	// claims, ok := user.Claims.(jwt.MapClaims)
+	// if !ok {
+	// 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token claims"})
+	// }
 
-	userID, ok := claims["sub"].(string)
-	if !ok || userID == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid user ID in token"})
-	}
+	// userID, ok := claims["sub"].(string)
+	// if !ok || userID == "" {
+	// 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid user ID in token"})
+	// }
 
 	var data validators.AddProductInput
 
@@ -60,7 +60,7 @@ func AddProduct(c *fiber.Ctx) error {
 		Price:       int(data.Price),
 		Status:      status,
 		Quantity:    data.Quantity,
-		UserID:      userID,
+		Category:    data.Category, // Menyimpan Category
 	}
 
 	// Save product to database

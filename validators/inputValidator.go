@@ -32,6 +32,7 @@ type AddProductInput struct {
     BrandName   string `json:"brandName" validate:"required"`
     Price       int    `json:"price" validate:"required"`
     Quantity    int    `json:"quantity" validate:"required"`
+    Category    string  `json:"category" validate:"required"`
 }
 
 // EditProductInput represents the input data for editing an existing product
