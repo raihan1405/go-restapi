@@ -29,6 +29,6 @@ func Setup(app *fiber.App) {
 	api.Put("/user", controllers.UpdateProfile)
 	api.Put("/user/password", controllers.UpdatePassword)
 
-	// Rute untuk produk
+
 	
 }
