@@ -40,7 +40,7 @@ type EditProductInput struct {
     ProductName string  `json:"productName" validate:"required,min=2,max=100"`
     BrandName   string  `json:"brandName" validate:"required,min=2,max=100"`
     Price       float64 `json:"price" validate:"required,gt=0"`
-    Quantity    int     `json:"quantity" validate:"required,min=0"`
+    Quantity    int     `json:"quantity"` // Tanpa validasi min=0
     Category    string  `json:"category" validate:"required"`
 }
 

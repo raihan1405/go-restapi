@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"log"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -118,12 +117,14 @@ func EditProduct(c *fiber.Ctx) error {
         return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
     }
 
-    // Log data yang diterima untuk debugging
-    log.Printf("Received data: %+v", data)
-
     // Validasi data input
     if err := validators.Validate.Struct(data); err != nil {
         return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
+    }
+
+    // Validasi manual untuk Quantity
+    if data.Quantity < 0 {
+        return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Quantity cannot be negative"})
     }
 
     // Cari produk berdasarkan ID
@@ -135,7 +136,7 @@ func EditProduct(c *fiber.Ctx) error {
     // Perbarui detail produk
     product.ProductName = data.ProductName
     product.BrandName = data.BrandName
-    product.Category = data.Category  // Perbarui category jika tersedia
+    product.Category = data.Category
     product.Price = int(data.Price)
     product.Quantity = data.Quantity
     product.Status = data.Quantity > 0
@@ -148,5 +149,3 @@ func EditProduct(c *fiber.Ctx) error {
     // Kembalikan produk yang telah diperbarui sebagai respon
     return c.JSON(product)
 }
-
-
