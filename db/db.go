@@ -43,6 +43,8 @@ func Init() {
 	if err != nil {
 		log.Fatal(err)
 		panic("Failed to connect to database")
+	}else{
+		fmt.Println("success to connect")
 	}
 
 	// Assign the database connection to the global DB variable

@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 	"os"
-	"strings"
+
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -36,19 +36,8 @@ func main() {
 	}
 
 	app := fiber.New()
-	allowedOrigins := "http://localhost:5173,https://sjr-app-dev.vercel.app"
-	allowedOriginsList := strings.Split(allowedOrigins, ",")
-
-	// Set up CORS middleware with dynamic origin checking
 	app.Use(cors.New(cors.Config{
-		AllowOriginsFunc: func(origin string) bool {
-			for _, allowedOrigin := range allowedOriginsList {
-				if origin == allowedOrigin {
-					return true
-				}
-			}
-			return false
-		},
+		AllowOrigins:     "http://localhost:5173",
 		AllowCredentials: true,
 		AllowMethods:     "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
 		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
@@ -56,6 +45,10 @@ func main() {
 
 	db.Init()
 	models.Setup(db.DB)
+	models.Operator{}.Setup(db.DB)
+	models.CartItem{}.Setup(db.DB)
+	models.Invoice{}.Setup(db.DB)
+	models.InvoiceItem{}.Setup(db.DB)
 	routes.Setup(app)
 
 	app.Get("/swagger/*", swagger.HandlerDefault) // default

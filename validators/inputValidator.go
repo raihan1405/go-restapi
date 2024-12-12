@@ -52,3 +52,7 @@ type AddToCartInput struct {
 type UpdateCartItemInput struct {
 	Quantity int `json:"quantity" validate:"required,min=1"`
 }
+
+type OperatorLoginInput struct {
+	OperatorID string `json:"operator_id" validate:"required"`
+}

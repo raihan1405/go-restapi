@@ -9,5 +9,5 @@ type Product struct{
 	Status bool `json:"status"`
 	Quantity int `json:"quantity"`
 	Category    string `json:"Category"`
-	UserID      string `json:"userId"`
+	OperatorID  string `json:"operator_id"`
 }

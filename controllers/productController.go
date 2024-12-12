@@ -2,8 +2,13 @@ package controllers
 
 import (
 	"strconv"
+	"log"
+	"os"
+	"fmt"
+
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v4"
 	//"github.com/golang-jwt/jwt/v4" // Menggunakan jwt dari golang-jwt/jwt/v4
 	"github.com/raihan1405/go-restapi/db"
 	"github.com/raihan1405/go-restapi/models"
@@ -22,54 +27,64 @@ import (
 // @Failure 500 {object} map[string]interface{}
 // @Router /api/products [post]
 func AddProduct(c *fiber.Ctx) error {
-	// Mendapatkan user dari context (yang di-set oleh middleware JWT)
-	// user, ok := c.Locals("user").(*jwt.Token)
-	// if !ok {
-	// 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
-	// }
+    // Mendapatkan user dari context (yang di-set oleh middleware JWT)
+    userInterface := c.Locals("user")
+    if userInterface == nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+    }
 
-	// claims, ok := user.Claims.(jwt.MapClaims)
-	// if !ok {
-	// 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token claims"})
-	// }
+    user, ok := userInterface.(*jwt.Token)
+    if !ok {
+        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid user token"})
+    }
 
-	// userID, ok := claims["sub"].(string)
-	// if !ok || userID == "" {
-	// 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid user ID in token"})
-	// }
+    claims, ok := user.Claims.(jwt.MapClaims)
+    if !ok {
+        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token claims"})
+    }
 
-	var data validators.AddProductInput
+    operatorID, ok := claims["sub"].(string)
+    if !ok || operatorID == "" {
+        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid operator ID in token"})
+    }
 
-	// Parse data into the structure
-	if err := c.BodyParser(&data); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
-	}
+    var data validators.AddProductInput
 
-	// Validate input data
-	if err := validators.Validate.Struct(data); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
-	}
+    // Parse data into the structure
+    if err := c.BodyParser(&data); err != nil {
+        log.Printf("Error parsing JSON: %v\n", err)
+        return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
+    }
 
-	// Set status based on quantity
-	status := data.Quantity > 0
+    // Validate input data
+    if err := validators.Validate.Struct(data); err != nil {
+        log.Printf("Validation error: %v\n", err)
+        return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
+    }
 
-	// Create product
-	product := models.Product{
-		ProductName: data.ProductName,
-		BrandName:   data.BrandName,
-		Price:       int(data.Price),
-		Status:      status,
-		Quantity:    data.Quantity,
-		Category:    data.Category, // Menyimpan Category
-	}
+    // Set status based on quantity
+    status := data.Quantity > 0
 
-	// Save product to database
-	if err := db.DB.Create(&product).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"error": "Cannot save product"})
-	}
+    // Create product
+    product := models.Product{
+        ProductName: data.ProductName,
+        BrandName:   data.BrandName,
+        Price:       int(data.Price),
+        Status:      status,
+        Quantity:    data.Quantity,
+        Category:    data.Category, // Menyimpan Category
+        OperatorID:  operatorID,     // Menyimpan OperatorID
+    }
 
-	return c.JSON(product)
+    // Save product to database
+    if err := db.DB.Create(&product).Error; err != nil {
+        log.Printf("Database error: %v\n", err)
+        return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"error": "Cannot save product"})
+    }
+
+    return c.Status(fiber.StatusCreated).JSON(product)
 }
+
 
 
 // GetAllProducts godoc
@@ -105,35 +120,61 @@ func GetAllProducts(c *fiber.Ctx) error {
 // @Failure 500 {object} map[string]interface{}
 // @Router /api/products/{id} [put]
 func EditProduct(c *fiber.Ctx) error {
-    // Ambil ID produk dari parameter URL
+    // Get token from cookie
+    cookie := c.Cookies("jwt_operator")
+
+    // Parse the token to validate it and extract claims
+    token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+        // Use the appropriate signing key based on the kid
+        keyID, ok := token.Header["kid"].(string)
+        if !ok {
+            return nil, jwt.NewValidationError("missing kid header", jwt.ValidationErrorClaimsInvalid)
+        }
+		fmt.Println(keyID)
+
+        switch keyID {
+        case "operator":
+            return []byte(os.Getenv("JWT_SECRET_OPERATOR")), nil
+        case "user":
+            return []byte(os.Getenv("JWT_SECRET")), nil
+        default:
+            return nil, jwt.NewValidationError("invalid kid", jwt.ValidationErrorClaimsInvalid)
+        }
+    })
+
+    if err != nil || !token.Valid {
+        return c.Status(fiber.StatusUnauthorized).JSON(map[string]interface{}{"error": "unauthenticated"})
+    }
+
+    // Get product ID from the URL parameter
     id, err := strconv.Atoi(c.Params("id"))
     if err != nil {
         return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Invalid product ID"})
     }
 
-    // Parsing data dari permintaan masuk ke dalam struktur
+    // Parse the incoming request body
     var data validators.EditProductInput
     if err := c.BodyParser(&data); err != nil {
         return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Cannot parse JSON"})
     }
 
-    // Validasi data input
+    // Validate the input
     if err := validators.Validate.Struct(data); err != nil {
         return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": err.Error()})
     }
 
-    // Validasi manual untuk Quantity
+    // Validate quantity is not negative
     if data.Quantity < 0 {
         return c.Status(fiber.StatusBadRequest).JSON(map[string]interface{}{"error": "Quantity cannot be negative"})
     }
 
-    // Cari produk berdasarkan ID
+    // Find product by ID
     var product models.Product
     if err := db.DB.First(&product, id).Error; err != nil {
         return c.Status(fiber.StatusNotFound).JSON(map[string]interface{}{"error": "Product not found"})
     }
 
-    // Perbarui detail produk
+    // Update product details
     product.ProductName = data.ProductName
     product.BrandName = data.BrandName
     product.Category = data.Category
@@ -141,11 +182,11 @@ func EditProduct(c *fiber.Ctx) error {
     product.Quantity = data.Quantity
     product.Status = data.Quantity > 0
 
-    // Simpan perubahan ke database
+    // Save the updated product
     if err := db.DB.Save(&product).Error; err != nil {
         return c.Status(fiber.StatusInternalServerError).JSON(map[string]interface{}{"error": "Cannot update product"})
     }
 
-    // Kembalikan produk yang telah diperbarui sebagai respon
+    // Return the updated product
     return c.JSON(product)
 }
