@@ -56,3 +56,7 @@ type UpdateCartItemInput struct {
 type OperatorLoginInput struct {
 	OperatorID string `json:"operator_id" validate:"required"`
 }
+
+type AdminLoginInput struct {
+    AdminID string `json:"admin_id" validate:"required"`
+}

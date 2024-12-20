@@ -13,6 +13,7 @@ func Setup(app *fiber.App) {
 
 	app.Post("/api/register", controllers.Register)
 	app.Post("/api/login", controllers.Login)
+	app.Post("/admin/login", controllers.LoginAdmin)
 	app.Post("/operator/loginOperator", controllers.LoginOperator)
 	
 	api := app.Group("/api", jwtware.New(jwtware.Config{
@@ -48,7 +49,22 @@ func Setup(app *fiber.App) {
 	apiOperator.Get("/getAllInvoice", controllers.GetAllInvoicesForOperator)
 	apiOperator.Put("/invoices/approve", controllers.ApproveInvoices)
 	apiOperator.Put("/invoices/reject", controllers.RejectInvoices)
-	
+	apiOperator.Get("/invoices/accepted", controllers.GetAcceptInvoice)
+	apiOperator.Put("/invoices/updateShipment", controllers.UpdateStatusInvoice)
+
+
+	apiAdmin := app.Group("/admin", jwtware.New(jwtware.Config{
+		SigningKey:   []byte(os.Getenv("JWT_SECRET_ADMIN")),
+		TokenLookup:  "cookie:jwt_admin",                    
+		ErrorHandler: jwtError,
+	}))
+
+	apiAdmin.Get("/adminProducts", controllers.GetAllProducts)
+	apiAdmin.Post("/logoutAdmin", controllers.LogoutAdmin)
+	apiAdmin.Get("/productAdmin", controllers.GetAllProducts)
+	apiAdmin.Get("/getAllInvoiceAdmin", controllers.GetAllInvoicesForAdmin)
+	apiAdmin.Get("/getProductReport/:id", controllers.GenerateProductReport)
+
 }
 
 func jwtError(c *fiber.Ctx, err error) error {

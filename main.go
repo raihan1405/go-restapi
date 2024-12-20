@@ -49,6 +49,12 @@ func main() {
 	models.CartItem{}.Setup(db.DB)
 	models.Invoice{}.Setup(db.DB)
 	models.InvoiceItem{}.Setup(db.DB)
+	models.Admin{}.Setup(db.DB)
+	models.ProductReport{}.Setup(db.DB)
+	models.ProductIn{}.Setup(db.DB)
+	models.ProductOut{}.Setup(db.DB)
+
+
 	routes.Setup(app)
 
 	app.Get("/swagger/*", swagger.HandlerDefault) // default

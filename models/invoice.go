@@ -11,16 +11,15 @@ type InvoiceDetailResponse struct {
 	InvoiceItems []InvoiceItem `json:"invoice_items"`
 }
 
-
-// Invoice mewakili invoice yang dibuat dari keranjang
 // Invoice mewakili invoice yang dibuat dari keranjang
 type Invoice struct {
 	ID          int           `json:"id"`
 	UserID      string        `json:"user_id"`
 	User         User          `json:"user" gorm:"foreignkey:UserID"`
-	TotalPrice  float64       `json:"total_price"` // Total harga dari semua items
+	TotalPrice  float64       `json:"total_price"`
 	CreatedAt   time.Time     `json:"created_at"`
-	Status      string        `json:"status"` // Status pembayaran (misalnya "Pending", "Paid")
+	Status      string        `json:"status"`
+	StatusShipment string       `json:"status_shipment"`
 	InvoiceItems []InvoiceItem `json:"invoice_items" gorm:"foreignkey:InvoiceID"`
 }
 

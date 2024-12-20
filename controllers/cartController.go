@@ -1,9 +1,9 @@
 package controllers
 
 import (
+	"os"
 	"strconv"
 	"time"
-	"os"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4" // Menggunakan jwt dari golang-jwt/jwt/v4
@@ -16,8 +16,6 @@ import (
 type SuccessResponse struct {
 	Message string `json:"message"`
 }
-
-
 
 // AddToCart godoc
 // @Summary Add a product to cart
@@ -133,9 +131,8 @@ func GetCart(c *fiber.Ctx) error {
 		cartItems[i].TotalPrice = float64(cartItems[i].Quantity * cartItems[i].Product.Price)
 	}
 
-	return c.JSON(cartItems)	
+	return c.JSON(cartItems)
 }
-
 
 // RemoveFromCart godoc
 // @Summary Remove an item from the cart
@@ -265,7 +262,6 @@ func UpdateCartItem(c *fiber.Ctx) error {
 	// Return the updated cart item
 	return c.JSON(cartItem)
 }
-
 
 // CreateInvoice godoc
 // @Summary Create an invoice from the user's cart
@@ -417,223 +413,368 @@ func GetAllInvoices(c *fiber.Ctx) error {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/invoices [get]
 func GetAllInvoicesForOperator(c *fiber.Ctx) error {
-    // Ambil token JWT dari cookie
-    cookie := c.Cookies("jwt_operator")
+	// Ambil token JWT dari cookie
+	cookie := c.Cookies("jwt_operator")
 
-    // Jika tidak ada token di cookie
-    if cookie == "" {
-        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-            Message: "unauthenticated",
-            Error:   "No JWT token found in cookie",
-        })
-    }
+	// Jika tidak ada token di cookie
+	if cookie == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Message: "unauthenticated",
+			Error:   "No JWT token found in cookie",
+		})
+	}
 
-    // Parse token dengan claims
-    token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
-        // Mengambil key ID (kid) dari header JWT
-        keyID, ok := token.Header["kid"].(string)
-        if !ok {
-            return nil, jwt.NewValidationError("missing kid header", jwt.ValidationErrorClaimsInvalid)
-        }
+	// Parse token dengan claims
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		// Mengambil key ID (kid) dari header JWT
+		keyID, ok := token.Header["kid"].(string)
+		if !ok {
+			return nil, jwt.NewValidationError("missing kid header", jwt.ValidationErrorClaimsInvalid)
+		}
 
-        // Return signing key berdasarkan kid
-        switch keyID {
-        case "operator":
-            return []byte(os.Getenv("JWT_SECRET_OPERATOR")), nil
-        case "user":
-            return []byte(os.Getenv("JWT_SECRET")), nil
-        default:
-            return nil, jwt.NewValidationError("invalid kid", jwt.ValidationErrorClaimsInvalid)
-        }
-    })
+		// Return signing key berdasarkan kid
+		switch keyID {
+		case "operator":
+			return []byte(os.Getenv("JWT_SECRET_OPERATOR")), nil
+		case "user":
+			return []byte(os.Getenv("JWT_SECRET")), nil
+		default:
+			return nil, jwt.NewValidationError("invalid kid", jwt.ValidationErrorClaimsInvalid)
+		}
+	})
 
-    // Cek error token atau invalid token
-    if err != nil || !token.Valid {
-        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-            Message: "unauthenticated",
-            Error:   "Invalid or expired token",
-        })
-    }
+	// Cek error token atau invalid token
+	if err != nil || !token.Valid {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Message: "unauthenticated",
+			Error:   "Invalid or expired token",
+		})
+	}
 
-    // Ambil claims dari token
-    claims, ok := token.Claims.(*jwt.StandardClaims)
-    if !ok {
-        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-            Message: "unauthenticated",
-            Error:   "Invalid token claims",
-        })
-    }
+	// Ambil claims dari token
+	claims, ok := token.Claims.(*jwt.StandardClaims)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Message: "unauthenticated",
+			Error:   "Invalid token claims",
+		})
+	}
 
-    // Konversi Subject menjadi integer (Operator ID)
-    operatorID, err := strconv.Atoi(claims.Subject)
-    if err != nil {
-        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-            Message: "Invalid token",
-            Error:   "Token contains invalid operator ID",
-        })
-    }
+	// Konversi Subject menjadi integer (Operator ID)
+	operatorID, err := strconv.Atoi(claims.Subject)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Message: "Invalid token",
+			Error:   "Token contains invalid operator ID",
+		})
+	}
 
-    // Cari operator di database
-    var operator models.Operator
-    if err := db.DB.Where("id = ?", operatorID).First(&operator).Error; err != nil {
-        return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
-            Message: "operator not found",
-            Error:   "No operator with the given ID",
-        })
-    }
+	// Cari operator di database
+	var operator models.Operator
+	if err := db.DB.Where("id = ?", operatorID).First(&operator).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Message: "operator not found",
+			Error:   "No operator with the given ID",
+		})
+	}
 
-    // Ambil semua invoice dari database, preload data terkait InvoiceItems dan Products
-    var invoices []models.Invoice
-    if err := db.DB.Preload("InvoiceItems.Product").Preload("User").Find(&invoices).Error; err != nil {
-        return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
-            Message: "failed to retrieve invoices",
-            Error:   "Failed to retrieve invoices from the database",
-        })
-    }
+	// Ambil semua invoice dari database, preload data terkait InvoiceItems dan Products
+	var invoices []models.Invoice
+	if err := db.DB.Preload("InvoiceItems.Product").Preload("User").Find(&invoices).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: "failed to retrieve invoices",
+			Error:   "Failed to retrieve invoices from the database",
+		})
+	}
 
-    // Return all invoices as JSON response
-    return c.JSON(invoices)
+	// Return all invoices as JSON response
+	return c.JSON(invoices)
 }
 
 // ApproveMultipleInvoices memungkinkan operator untuk menyetujui beberapa pesanan sekaligus
 func ApproveInvoices(c *fiber.Ctx) error {
-    // Ambil token dari cookie
-    cookie := c.Cookies("jwt_operator")
+	// Ambil token dari cookie
+	cookie := c.Cookies("jwt_operator")
 
-    // Parse token dengan claims
-    token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
-        keyID, ok := token.Header["kid"].(string)
-        if !ok {
-            return nil, jwt.NewValidationError("missing kid header", jwt.ValidationErrorClaimsInvalid)
-        }
+	// Parse token dengan claims
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		keyID, ok := token.Header["kid"].(string)
+		if !ok {
+			return nil, jwt.NewValidationError("missing kid header", jwt.ValidationErrorClaimsInvalid)
+		}
 
-        switch keyID {
-        case "operator":
-            return []byte(os.Getenv("JWT_SECRET_OPERATOR")), nil
-        default:
-            return nil, jwt.NewValidationError("invalid kid", jwt.ValidationErrorClaimsInvalid)
-        }
-    })
+		switch keyID {
+		case "operator":
+			return []byte(os.Getenv("JWT_SECRET_OPERATOR")), nil
+		default:
+			return nil, jwt.NewValidationError("invalid kid", jwt.ValidationErrorClaimsInvalid)
+		}
+	})
 
-    if err != nil || !token.Valid {
-        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-            Message: "unauthenticated",
-            Error:   "Invalid or expired token",
-        })
-    }
+	if err != nil || !token.Valid {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Message: "unauthenticated",
+			Error:   "Invalid or expired token",
+		})
+	}
 
-    // Ambil operatorID dari claims
-    claims, ok := token.Claims.(*jwt.StandardClaims)
-    if !ok {
-        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-            Message: "unauthenticated",
-            Error:   "Invalid token claims",
-        })
-    }
+	// Ambil operatorID dari claims
+	claims, ok := token.Claims.(*jwt.StandardClaims)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Message: "unauthenticated",
+			Error:   "Invalid token claims",
+		})
+	}
 
 	operatorID := claims.Subject
 	var operator models.Operator
-    if err := db.DB.Where("id = ?", operatorID).First(&operator).Error; err != nil {
-        return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
-            Message: "operator not found",
-            Error:   "No operator with the given ID",
-        })
-    }
+	if err := db.DB.Where("id = ?", operatorID).First(&operator).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Message: "operator not found",
+			Error:   "No operator with the given ID",
+		})
+	}
 
-    // Parse daftar order IDs yang ingin di-approve
-    var orderIDs []int
-    if err := c.BodyParser(&orderIDs); err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
-            Message: "invalid input",
-            Error:   "Failed to parse order IDs",
-        })
-    }
+	// Parse daftar order IDs yang ingin di-approve
+	var orderIDs []int
+	if err := c.BodyParser(&orderIDs); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Message: "invalid input",
+			Error:   "Failed to parse order IDs",
+		})
+	}
 
-    // Update status setiap order
-    for _, orderID := range orderIDs {
-        if err := db.DB.Model(&models.Invoice{}).Where("id = ?", orderID).Update("status", "Approved").Error; err != nil {
-            return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
-                Message: "failed to update status",
-                Error:   "Failed to update status for order ID " + strconv.Itoa(orderID),
-            })
-        }
-    }
+	// Update status setiap order
+	for _, orderID := range orderIDs {
+		if err := db.DB.Model(&models.Invoice{}).Where("id = ?", orderID).Update("status", "Approved").Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Message: "failed to update status",
+				Error:   "Failed to update status for order ID " + strconv.Itoa(orderID),
+			})
+		}
+	}
 
-    return c.JSON(fiber.Map{
-        "message": "Orders successfully approved",
-    })
+	return c.JSON(fiber.Map{
+		"message": "Orders successfully approved",
+	})
 }
 
 func RejectInvoices(c *fiber.Ctx) error {
-    // Ambil token dari cookie
-    cookie := c.Cookies("jwt_operator")
+	// Ambil token dari cookie
+	cookie := c.Cookies("jwt_operator")
 
-    // Parse token dengan claims
-    token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
-        keyID, ok := token.Header["kid"].(string)
-        if !ok {
-            return nil, jwt.NewValidationError("missing kid header", jwt.ValidationErrorClaimsInvalid)
-        }
+	// Parse token dengan claims
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		keyID, ok := token.Header["kid"].(string)
+		if !ok {
+			return nil, jwt.NewValidationError("missing kid header", jwt.ValidationErrorClaimsInvalid)
+		}
 
-        switch keyID {
-        case "operator":
-            return []byte(os.Getenv("JWT_SECRET_OPERATOR")), nil
-        default:
-            return nil, jwt.NewValidationError("invalid kid", jwt.ValidationErrorClaimsInvalid)
-        }
-    })
+		switch keyID {
+		case "operator":
+			return []byte(os.Getenv("JWT_SECRET_OPERATOR")), nil
+		default:
+			return nil, jwt.NewValidationError("invalid kid", jwt.ValidationErrorClaimsInvalid)
+		}
+	})
 
-    if err != nil || !token.Valid {
-        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-            Message: "unauthenticated",
-            Error:   "Invalid or expired token",
-        })
-    }
+	if err != nil || !token.Valid {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Message: "unauthenticated",
+			Error:   "Invalid or expired token",
+		})
+	}
 
-    // Ambil operatorID dari claims
-    claims, ok := token.Claims.(*jwt.StandardClaims)
-    if !ok {
-        return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-            Message: "unauthenticated",
-            Error:   "Invalid token claims",
-        })
-    }
+	// Ambil operatorID dari claims
+	claims, ok := token.Claims.(*jwt.StandardClaims)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Message: "unauthenticated",
+			Error:   "Invalid token claims",
+		})
+	}
 
-    operatorID := claims.Subject
-    var operator models.Operator
-    if err := db.DB.Where("id = ?", operatorID).First(&operator).Error; err != nil {
-        return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
-            Message: "operator not found",
-            Error:   "No operator with the given ID",
-        })
-    }
+	operatorID := claims.Subject
+	var operator models.Operator
+	if err := db.DB.Where("id = ?", operatorID).First(&operator).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Message: "operator not found",
+			Error:   "No operator with the given ID",
+		})
+	}
 
-    // Parse daftar order IDs yang ingin di-reject
-    var orderIDs []int
-    if err := c.BodyParser(&orderIDs); err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
-            Message: "invalid input",
-            Error:   "Failed to parse order IDs",
-        })
-    }
+	// Parse daftar order IDs yang ingin di-reject
+	var orderIDs []int
+	if err := c.BodyParser(&orderIDs); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Message: "invalid input",
+			Error:   "Failed to parse order IDs",
+		})
+	}
 
-    // Update status setiap order menjadi "Rejected"
-    for _, orderID := range orderIDs {
-        if err := db.DB.Model(&models.Invoice{}).Where("id = ?", orderID).Update("status", "Rejected").Error; err != nil {
-            return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
-                Message: "failed to update status",
-                Error:   "Failed to update status for order ID " + strconv.Itoa(orderID),
-            })
-        }
-    }
+	// Update status setiap order menjadi "Rejected"
+	for _, orderID := range orderIDs {
+		if err := db.DB.Model(&models.Invoice{}).Where("id = ?", orderID).Update("status", "Rejected").Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Message: "failed to update status",
+				Error:   "Failed to update status for order ID " + strconv.Itoa(orderID),
+			})
+		}
+	}
 
-    return c.JSON(fiber.Map{
-        "message": "Orders successfully rejected",
-    })
+	return c.JSON(fiber.Map{
+		"message": "Orders successfully rejected",
+	})
 }
 
+func GetAcceptInvoice(c *fiber.Ctx) error {
+	// Ambil token dari cookie
+	cookie := c.Cookies("jwt_operator")
 
+	// Parse token dengan claims
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		keyID, ok := token.Header["kid"].(string)
+		if !ok {
+			return nil, jwt.NewValidationError("missing kid header", jwt.ValidationErrorClaimsInvalid)
+		}
 
+		switch keyID {
+		case "operator":
+			return []byte(os.Getenv("JWT_SECRET_OPERATOR")), nil
+		default:
+			return nil, jwt.NewValidationError("invalid kid", jwt.ValidationErrorClaimsInvalid)
+		}
+	})
 
+	if err != nil || !token.Valid {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Message: "unauthenticated",
+			Error:   "Invalid or expired token",
+		})
+	}
 
+	// Ambil operatorID dari claims
+	claims, ok := token.Claims.(*jwt.StandardClaims)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Message: "unauthenticated",
+			Error:   "Invalid token claims",
+		})
+	}
+
+	operatorID := claims.Subject
+	var operator models.Operator
+	if err := db.DB.Where("id = ?", operatorID).First(&operator).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Message: "operator not found",
+			Error:   "No operator with the given ID",
+		})
+	}
+
+	var invoices []models.Invoice
+	if err := db.DB.
+		Preload("InvoiceItems.Product"). // Preload relasi dengan InvoiceItems dan Product
+		Preload("User").                 // Preload relasi dengan User
+		Where("status = ?", "Approved"). // Filter berdasarkan status "Approved"
+		Find(&invoices).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: "failed to retrieve invoices",
+			Error:   "Failed to get invoices with status 'Approved'",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message":  "Successfully retrieved accepted invoices",
+		"invoices": invoices,
+	})
+}
+
+func UpdateStatusInvoice(c *fiber.Ctx) error {
+	// Ambil token dari cookie
+	cookie := c.Cookies("jwt_operator")
+
+	// Parse token dengan claims
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		keyID, ok := token.Header["kid"].(string)
+		if !ok {
+			return nil, jwt.NewValidationError("missing kid header", jwt.ValidationErrorClaimsInvalid)
+		}
+
+		switch keyID {
+		case "operator":
+			return []byte(os.Getenv("JWT_SECRET_OPERATOR")), nil
+		default:
+			return nil, jwt.NewValidationError("invalid kid", jwt.ValidationErrorClaimsInvalid)
+		}
+	})
+
+	if err != nil || !token.Valid {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Message: "unauthenticated",
+			Error:   "Invalid or expired token",
+		})
+	}
+
+	// Ambil operatorID dari claims
+	claims, ok := token.Claims.(*jwt.StandardClaims)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Message: "unauthenticated",
+			Error:   "Invalid token claims",
+		})
+	}
+
+	operatorID := claims.Subject
+	var operator models.Operator
+	if err := db.DB.Where("id = ?", operatorID).First(&operator).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Message: "operator not found",
+			Error:   "No operator with the given ID",
+		})
+	}
+
+	// Parse daftar order IDs dan status_shipment yang ingin di-approve
+	var requestData struct {
+		OrderIDs      []int  `json:"order_ids"`       // Daftar order ID yang dipilih
+		StatusShipment string `json:"status_shipment"` // Status pengiriman yang dipilih
+	}
+
+	if err := c.BodyParser(&requestData); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Message: "invalid input",
+			Error:   "Failed to parse order IDs or status_shipment",
+		})
+	}
+
+	// Validasi status_shipment
+	validStatus := []string{"Pending", "Shipped", "Delivered", "Returned", "Cancelled"}
+	isValidStatus := false
+	for _, status := range validStatus {
+		if status == requestData.StatusShipment {
+			isValidStatus = true
+			break
+		}
+	}
+	if !isValidStatus {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Message: "invalid status_shipment",
+			Error:   "Invalid status_shipment value provided",
+		})
+	}
+
+	// Update status setiap order dengan status_shipment yang dipilih
+	for _, orderID := range requestData.OrderIDs {
+		if err := db.DB.Model(&models.Invoice{}).Where("id = ?", orderID).Update("status_shipment", requestData.StatusShipment).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Message: "failed to update status_shipment",
+				Error:   "Failed to update status_shipment for order ID " + strconv.Itoa(orderID),
+			})
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "Orders successfully updated with new shipment status",
+	})
+}
 
